@@ -18,12 +18,18 @@ $log_path=SERVER_ROOT.'/temp/log';
 if(!is_dir($log_path)){
     mkdir($log_path, 0777, true);
 }
-defined('TEMP_ROOT') or define('TEMP_ROOT', $temp_path);
-defined('LOG_ROOT') or define('LOG_ROOT', $log_path);
 
 // 检查扩展或环境
 if(strpos(strtolower(PHP_OS), 'win') === 0) {
-    exit("run.php not support windows.\n");
+    exit("start.php not support windows.\n");
+}
+
+//自动加载文件
+$auto_file=SERVER_ROOT . '/vendor/autoload.php';
+if (file_exists($auto_file)) {
+    require_once $auto_file;
+} else {
+    exit("Please composer install.\n");
 }
 
 //导入配置文件
@@ -42,23 +48,24 @@ if (file_exists($config_path)) {
 }
 defined('CONFIG') or define('CONFIG', $conf);
 
-//自动加载文件
-$auto_file=SERVER_ROOT . '/vendor/autoload.php';
-if (file_exists($auto_file)) {
-    require_once $auto_file;
-} else {
-    exit("Please composer install.\n");
-}
-
 $business = new BusinessWorker();
 
 // 设置pid文件
-$business->pid_file = TEMP_ROOT . '/business.pid';
+$business->pid_file = $temp_path . '/pid.pid';
+
+$business->set([
+    'worker_file'=> SERVER_ROOT.''
+]);
 
 // 设置服务端参数 参考:http://wiki.swoole.com/#/server/setting
 $business->set([
-    'log_file' => LOG_ROOT . '/business.log',
-    'stats_file' => LOG_ROOT . '/business.stats.log',
+    'log_level'=> SWOOLE_LOG_ERROR,
+    'log_file'=> $log_path.'/log.log',
+    'pid_file'=> $temp_path.'/pid.pid',
+    'stats_file' => $temp_path . '/stats.log',
+    'worker_num'=> CONFIG['HTTP_SERVER']['PROCESS_COUNT'],
+    'task_tmpdir'=> $temp_path,
+    'max_coroutine'=> 100000,
     'hook_flags' => SWOOLE_HOOK_ALL, // 建议开启
 ]);
 
